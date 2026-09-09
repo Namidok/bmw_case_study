@@ -71,7 +71,9 @@ class KnowledgeBase:
             client.delete_collection("past_cases")
         except Exception:
             pass
-        self.chroma_collection = client.create_collection("past_cases")
+        self.chroma_collection = client.create_collection(
+        "past_cases", metadata={"hnsw:space": "cosine"}
+)
 
         texts = [c["inquiry_text"] for c in cases]
         embeddings = self.model.encode(texts, normalize_embeddings=True)

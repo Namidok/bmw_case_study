@@ -37,3 +37,27 @@ def classify_node(state: TriageState, kb: KnowledgeBase) -> dict:
         "category": kb.category_names[best_idx],
         "category_score": float(similarities[best_idx]),
     }
+
+def retrieve_top_k_node(state: TriageState, kb: KnowledgeBase) -> dict:
+    """
+    Query ChromaDB for the K most similar past cases to this inquiry.
+    Similarity = 1 - cosine_distance (collection is configured for cosine space).
+    """
+    results = kb.chroma_collection.query(
+        query_embeddings=[state["query_embedding"].tolist()],
+        n_results=state["top_k"],
+    )
+
+    retrieved = []
+    for doc, meta, dist in zip(
+        results["documents"][0], results["metadatas"][0], results["distances"][0]
+    ):
+        retrieved.append({
+            "text": doc,
+            "category": meta["category"],
+            "priority": meta["priority"],
+            "routed_queue": meta["routed_queue"],
+            "similarity": 1 - dist,
+        })
+
+    return {"retrieved_cases": retrieved}
