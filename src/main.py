@@ -4,6 +4,9 @@ import numpy as np
 
 from .ingestion import KnowledgeBase
 
+PRIORITY_TO_NUM = {"low": 1, "medium": 2, "high": 3}
+NUM_TO_PRIORITY = {1: "low", 2: "medium", 3: "high"}
+
 
 class TriageState(TypedDict):
     query: str
@@ -61,3 +64,21 @@ def retrieve_top_k_node(state: TriageState, kb: KnowledgeBase) -> dict:
         })
 
     return {"retrieved_cases": retrieved}
+
+def determine_priority_node(state: TriageState) -> dict:
+    """
+    Similarity-weighted average of the retrieved cases' priorities.
+    Closer matches count more than weaker ones, rather than a plain majority vote.
+    """
+    retrieved = state["retrieved_cases"]
+    if not retrieved:
+        return {"priority": "low"}  # no evidence -> safest default
+
+    weighted_sum = sum(
+        PRIORITY_TO_NUM[c["priority"]] * c["similarity"] for c in retrieved
+    )
+    total_weight = sum(c["similarity"] for c in retrieved)
+    avg = weighted_sum / total_weight
+
+    rounded = max(1, min(3, round(avg)))
+    return {"priority": NUM_TO_PRIORITY[rounded]}
