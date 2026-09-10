@@ -58,7 +58,19 @@ The default (0.35) wasn't guessed — it comes from a sweep (`tests/evaluate.py`
 - Priority weighting can occasionally be pulled away from the single closest match by two weaker-but-present matches (a known trade-off of averaging vs. "always trust the closest neighbor").
 - Category classification's raw confidence score is lower than intuition suggests, for the reason described above — worth recalibrating with a larger, more varied taxonomy description set.
 - No persistence between app restarts — ChromaDB rebuilds from `past_cases.csv` on every startup. Fine at 300 rows; would need a persistent store at scale.
-- Tested manually against a handful of representative queries (see `tests/`) rather than a formal evaluation set — a natural next step.
+- Evaluated systematically via `tests/evaluate.py` (leave-one-out style sweep
+  against the historical dataset) and `tests/test_multi_category.py` (targeted
+  multi-intent and edge-case probing) — see `docs/multi_category_findings.md`
+  for detailed findings.
+- **Known failure mode:** 
+
+  Single-label classification cannot split multi-intent
+  queries. Example: "order status + deposit invoice + steering wheel locked up
+  on the motorway" — two admin-sounding clauses drown out the one safety
+  clause; confidence lands at 0.72 and the inquiry does not escalate. No
+  threshold adjustment fixes this — it's structural. Planned fix: a
+  lightweight safety-keyword pre-check ahead of classification, or intent
+  splitting with priority = max across detected intents.
 
 ## Project structure
 
