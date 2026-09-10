@@ -31,7 +31,7 @@ with st.sidebar:
     st.header("Settings")
     top_k = st.slider("Top-K past cases", min_value=1, max_value=10, value=3)
     confidence_threshold = st.slider(
-        "Confidence threshold", min_value=0.0, max_value=1.0, value=0.5, step=0.05
+        "Confidence threshold", min_value=0.0, max_value=1.0, value=0.35, step=0.05
     )
 
 

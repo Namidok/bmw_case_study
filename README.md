@@ -47,6 +47,10 @@ where `category_score` is how close the inquiry is to its predicted category's d
 
 One observation from testing: raw `category_score` tends to run lower than retrieval `similarity`, because it compares the inquiry against a short abstract category *definition*, while retrieval compares it against real past examples. That's expected, not a bug — it's exactly why the two signals are combined rather than relying on either alone.
 
+**Threshold calibration.** 
+
+The default (0.35) wasn't guessed — it comes from a sweep (`tests/evaluate.py`) that tests each historical case against the rest of the dataset. On a 60-case sample: accuracy on auto-handled cases reaches 100% at 0.35 and stays there through 0.60, while escalation rate keeps climbing meaning anything above 0.35 escalates more without improving correctness. 0.30 still let one wrong classification through automatically (98% accuracy), which is why 0.35 was chosen over the lower value.
+
 **ChromaDB configured for cosine space explicitly**, since embeddings are pre-normalized — makes the similarity score a direct, explainable `1 - distance` rather than an opaque default metric.
 
 ## Known limitations
