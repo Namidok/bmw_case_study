@@ -6,7 +6,21 @@ vector store, LangGraph workflow) is left for you (the candidate) to
 implement in `triage_inquiry` below / in `src/main.py`.
 """
 
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 import streamlit as st
+
+from src.ingestion import KnowledgeBase
+from src.main import run_triage
+
+@st.cache_resource
+def get_knowledge_base():
+    """Built once per app session, reused across every message."""
+    return KnowledgeBase()
+
+kb = get_knowledge_base()
 
 # --- Configuration (sidebar controls) ------------------------------------
 
@@ -24,6 +38,21 @@ with st.sidebar:
 # --- Backend hook (IMPLEMENT ME) -----------------------------------------
 
 def triage_inquiry(query: str, top_k: int, confidence_threshold: float) -> dict:
+    result = run_triage(query, kb, top_k=top_k, confidence_threshold=confidence_threshold)
+
+    return {
+        "query": result["query"],
+        "category": result["category"],
+        "priority": result["priority"],
+        "routed_queue": result["routed_queue"],
+        "confidence": round(result["confidence"], 3),
+        "resolution_notes": result["resolution_notes"],
+        "retrieved_past_cases": [
+            f"{c['text']} — {c['category']} / {c['priority']} (similarity: {c['similarity']:.2f})"
+            for c in result["retrieved_cases"]
+        ],
+        "escalated": result["escalated"],
+    }
     """
     TODO (candidate): implement the triage pipeline.
 
