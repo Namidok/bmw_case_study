@@ -108,15 +108,16 @@ def compute_confidence_node(state: TriageState) -> dict:
 
     return {"confidence": confidence, "escalated": escalated}
 
+def escalate_node(state: TriageState) -> dict:
+    """Reached only via the low-confidence branch — skips the LLM call entirely."""
+    return {"resolution_notes": "Low confidence — flagged for human review before any automated action."}
+
+
 def generate_resolution_notes_node(state: TriageState) -> dict:
     """
-    The only node that calls the LLM. Everything else is embeddings + deterministic
-    logic, kept that way so the structured fields (category/priority/queue) stay
-    reliable and explainable. This node's job is purely the natural-language part.
+    Reached only via the 'continue' branch — confidence was sufficient.
+    The only node in the graph that calls the LLM.
     """
-    if state["escalated"]:
-        return {"resolution_notes": "Low confidence — flagged for human review before any automated action."}
-
     context = "\n".join(f"- {c['text']}" for c in state["retrieved_cases"][:3])
     prompt = (
         f"Customer inquiry: \"{state['query']}\"\n"
@@ -125,7 +126,6 @@ def generate_resolution_notes_node(state: TriageState) -> dict:
         f"Write ONLY a 1-2 sentence resolution note suggesting the next step for the assigned team. "
         f"Do not explain your reasoning or add commentary — output just the note itself."
     )
-
     response = ollama.chat(
         model="llama3.2:latest",
         messages=[{"role": "user", "content": prompt}],
@@ -145,6 +145,7 @@ def build_graph(kb: KnowledgeBase):
     graph.add_node("prioritize", determine_priority_node)
     graph.add_node("route", lambda s: route_node(s, kb))
     graph.add_node("confidence", compute_confidence_node)
+    graph.add_node("escalate", escalate_node)
     graph.add_node("resolve", generate_resolution_notes_node)
 
     graph.set_entry_point("classify")
@@ -156,8 +157,9 @@ def build_graph(kb: KnowledgeBase):
     graph.add_conditional_edges(
         "confidence",
         _confidence_router,
-        {"escalate": "resolve", "continue": "resolve"},
+        {"escalate": "escalate", "continue": "resolve"},
     )
+    graph.add_edge("escalate", END)
     graph.add_edge("resolve", END)
 
     return graph.compile()
